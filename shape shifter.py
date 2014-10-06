@@ -27,7 +27,6 @@ class Obstacle(pygame.sprite.Sprite):
 		self.image.set_colorkey(BLACK)
 		self.rect = self.image.get_rect()
 		self.name = name
-		print(position)
 		self.rect.x = int(position[0])	# Still in str format from reading into the file. This seams like the easiest place to convert them.
 		self.rect.y = int(position[1])
 
@@ -93,7 +92,7 @@ class Game:
 		self.player = Player()
 		self.allSprites.add(self.player)
 
-		self.level = "one"
+		self.level = 1
 		self.path = ""
 		self.get_state()
 
@@ -121,8 +120,9 @@ class Game:
 				code_number += 1
 			elif line[0] == "data":
 				data.append([])
-				data[data_number].append(line[1])
+				data[data_number].append(line[1].split(','))
 				data_number += 1
+
 
 		for obstacle in obstacles:	# For each obstacle in the level, create a new obstacle object.
 			name = obstacle[0]
@@ -130,6 +130,10 @@ class Game:
 			newObstacle = Obstacle(name, position)
 			self.allSprites.add(newObstacle)
 			self.obstacles.add(newObstacle)
+
+
+		for datum in data:
+			print(datum)
 
 
 
@@ -160,21 +164,21 @@ class Game:
 
 		for obstacle in collisions:
 			if obstacle.name == "orange_square":
-				self.level = "two"
+				self.level += 1
 				self.path = "programming"
 				for sprite in self.obstacles:
 					self.allSprites.remove(sprite)
 				self.obstacles.empty()
 				self.get_state()
 			elif obstacle.name == "purple_circle":
-				self.level = "two"
+				self.level += 1
 				self.path = "physics"
 				for sprite in self.obstacles:
 					self.allSprites.remove(sprite)
 				self.obstacles.empty()
 				self.get_state()
 			elif obstacle.name == "green_triangle":
-				self.level = "two"
+				self.level += 1
 				self.path = "geometry"
 				for sprite in self.obstacles:
 					self.allSprites.remove(sprite)
