@@ -21,30 +21,15 @@ FPS = 60
 
 class Obstacle(pygame.sprite.Sprite):
 
-	def __init__(self, name, shape, color, width, position, spriteSize, rect=0, center=0, radius=0, vertices=0):
+	def __init__(self, name, position):
 		pygame.sprite.Sprite.__init__(self)
-		self.image = pygame.Surface(spriteSize)
-		self.image.fill(BLACK)
+		self.image = pygame.image.load("media/obstacles/%s.png"%name).convert()
 		self.image.set_colorkey(BLACK)
 		self.rect = self.image.get_rect()
 		self.name = name
-		self.shape = {"name":name,"shape":shape,"color":color,"width":width,"position":position,"spriteSize":spriteSize,"rect":rect,"center":center,"radius":radius,"vertices":vertices}
-
-		if shape == "rect":
-			pygame.draw.rect(self.image, color, rect, width)
-			pygame.draw.rect(self.image, WHITE, self.rect, 1)
-			self.rect.x = int(position[0])
-			self.rect.y = int(position[1])
-		elif shape == "circle":
-			pygame.draw.circle(self.image, color, center, radius, width)
-			pygame.draw.circle(self.image, WHITE, center, radius, 1)
-			self.rect.x = int(position[0])
-			self.rect.y = int(position[1])
-		elif shape == "triangle":
-			pygame.draw.polygon(self.image, color, vertices, width)
-			pygame.draw.polygon(self.image, WHITE, vertices, 1)
-			self.rect.x = int(position[0])
-			self.rect.y = int(position[1])
+		print(position)
+		self.rect.x = int(position[0])	# Still in str format from reading into the file. This seams like the easiest place to convert them.
+		self.rect.y = int(position[1])
 
 
 
@@ -52,11 +37,13 @@ class Player(pygame.sprite.Sprite):
 
 	def __init__(self):
 		pygame.sprite.Sprite.__init__(self)	# Be sure to initialize the parent class as well.
-		self.image = pygame.Surface([10,10])
-		self.image.fill(BLACK)
+		self.image = pygame.image.load("media/player.png").convert()
 		self.image.set_colorkey(BLACK)
 		self.rect = self.image.get_rect()
-		pygame.draw.circle(self.image, WHITE, [5,5], 5, 0)
+
+		self.clock = pygame.time.Clock()
+		self.stop = False
+		self.step = 1
 
 		self.vector = [0,0]	# [x speed, y speed]
 		self.speed = 1
@@ -65,7 +52,7 @@ class Player(pygame.sprite.Sprite):
 		self.rect.y = 325 #int(HEIGHT/2)
 
 
-	def update(self):
+	def update(self, path=""):
 		if self.vector[0] == 1:			# RIGHT
 			self.rect.x += self.speed
 		elif self.vector[0] == -1:		# LEFT
@@ -75,13 +62,19 @@ class Player(pygame.sprite.Sprite):
 		elif self.vector[1] == 1:		# DOWN
 			self.rect.y -= self.speed
 
-
-	def change(self, shape):
-		if shape["name"] == "orange rectangle":
-			pygame.draw.rect(self.image, shape["color"], shape["rect"], shape["width"])
-			pygame.draw.rect(self.image, WHITE, self.rect, 1)
-			self.rect.x = int(shape["position"][0])
-			self.rect.y = int(shape["position"][1])
+		if path != "" and not self.stop:
+			if self.step == 1:
+				self.image = pygame.image.load("media/%s/player.png"%path).convert()
+			elif self.step == 2:
+				self.image = pygame.image.load("media/%s/player2.png"%path).convert()
+			elif self.step == 3:
+				self.image = pygame.image.load("media/%s/player3.png"%path).convert()
+			elif self.step == 4:
+				self.image = pygame.image.load("media/%s/player4.png"%path).convert()
+				self.stop = True
+				self.step = 1
+			pygame.time.delay(300)
+			self.step += 1
 
 
 
@@ -110,19 +103,31 @@ class Game:
 		obstacles = []
 		code = []
 		data = []
-		with open("data/{0}/level_{1}.data".format(self.path,self.level)) as f:
+		with open("data/{0}/level_{1}.data".format(self.path,self.level)) as f:	# Read from the file specified by the path the game has taken and the level.
 			for line in f:
 				lines.append(line.strip().split(';'))
-		line_number = 0
+		obstacles_number = 0	# Used for counting how many of each kind of thing there are.
+		code_number = 0
+		data_number = 0
 		for line in lines:
-			eval("%s.append([])"%line[0])
-			for i in range(1,len(line)):
-				eval("%s[line_number].append(eval(line[i]))"%line[0])
-			line_number += 1
+			if line[0] == "obstacles":
+				obstacles.append([])	# Creates a spot in the list for a new obstacle.
+				obstacles[obstacles_number].append(line[1])			# Sprite name
+				obstacles[obstacles_number].append(line[2].split(','))		# Position
+				obstacles_number += 1
+			elif line[0] == "code":
+				code.append([])
+				code[code_number].append(line[1])
+				code_number += 1
+			elif line[0] == "data":
+				data.append([])
+				data[data_number].append(line[1])
+				data_number += 1
 
-		for obstacle in obstacles:
-			name,shape,color,width,position,spriteSize,rect,center,radius,vertices = obstacle
-			newObstacle = Obstacle(name,shape,color,width,position,spriteSize,rect,center,radius,vertices)
+		for obstacle in obstacles:	# For each obstacle in the level, create a new obstacle object.
+			name = obstacle[0]
+			position = obstacle[1]
+			newObstacle = Obstacle(name, position)
 			self.allSprites.add(newObstacle)
 			self.obstacles.add(newObstacle)
 
@@ -149,27 +154,26 @@ class Game:
 
 	# Logic
 	def logic(self):
-		self.allSprites.update()
+		self.allSprites.update(self.path)
 
 		collisions = pygame.sprite.spritecollide(self.player, self.obstacles, True)
 
 		for obstacle in collisions:
-			if obstacle.name == "orange rectangle":
+			if obstacle.name == "orange_square":
 				self.level = "two"
 				self.path = "programming"
-				#self.player.change(obstacle.shape)
 				for sprite in self.obstacles:
 					self.allSprites.remove(sprite)
 				self.obstacles.empty()
 				self.get_state()
-			elif obstacle.name == "purple circle":
+			elif obstacle.name == "purple_circle":
 				self.level = "two"
 				self.path = "physics"
 				for sprite in self.obstacles:
 					self.allSprites.remove(sprite)
 				self.obstacles.empty()
 				self.get_state()
-			elif obstacle.name == "green triangle":
+			elif obstacle.name == "green_triangle":
 				self.level = "two"
 				self.path = "geometry"
 				for sprite in self.obstacles:
